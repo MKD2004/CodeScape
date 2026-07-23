@@ -45,10 +45,10 @@ This file is the source of truth for progress. Check off tasks (`- [x]`) as they
 
 ## Phase 2 — Layout algorithm (still no 3D — render as 2D rectangles first)
 
-- [ ] Implement squarified treemap (Bruls/Huizing/van Wijk) as a pure function: `(tree, rect) → tree with rect assigned to every node`
-- [ ] Unit tests: known small inputs produce expected rectangle proportions, no NaN/zero-size rectangles, no overlaps
-- [ ] Render output as plain colored `<div>`s in the browser to visually debug layout before touching Three.js
-- [ ] Confirm behavior on edge cases: empty folder, single file, very deeply nested folder, huge flat folder (many files, no subfolders)
+- [x] Implement squarified treemap (Bruls/Huizing/van Wijk) as a pure function: `(tree, rect) → tree with rect assigned to every node`
+- [x] Unit tests: known small inputs produce expected rectangle proportions, no NaN/zero-size rectangles, no overlaps
+- [x] Render output as plain colored `<div>`s in the browser to visually debug layout before touching Three.js
+- [x] Confirm behavior on edge cases: empty folder, single file, very deeply nested folder, huge flat folder (many files, no subfolders)
 
 ## Phase 3 — 3D scene (the core wow)
 
