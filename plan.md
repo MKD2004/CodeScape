@@ -34,14 +34,14 @@ This file is the source of truth for progress. Check off tasks (`- [x]`) as they
 
 ## Phase 1 — Data pipeline (no rendering yet)
 
-- [ ] GitHub tree-fetch function: given `owner/repo`, return flat list of `{path, type, size}` via the recursive git trees API
-- [ ] Language detection from file extension (static lookup table, cover top ~20 languages)
-- [ ] LOC counter (simple line count, skip binary/non-text files)
-- [ ] Complexity proxy: regex-based keyword counter (`if/for/while/switch/case/catch/&&/||`), documented as a heuristic not a real metric
-- [ ] File role classifier: heuristics on path + extension + filename patterns (e.g. `*.test.*` → test, `models/*` or `*Model*` → model, `routes/*`/`api/*` → API route, `*.config.*` → config, `components/*` or `.tsx` with capitalized default export → component)
-- [ ] Build the nested tree JSON (folders contain children) matching the schema in PROJECT.md
-- [ ] Unit tests: classifier on a handful of known example paths, LOC counter on fixture files
-- [ ] Manual test: run pipeline against 2-3 real repos of different sizes (small, medium, React-scale) and sanity check output JSON
+- [x] GitHub tree-fetch function: given `owner/repo`, return flat list of `{path, type, size}` via the recursive git trees API
+- [x] Language detection from file extension (static lookup table, cover top ~20 languages)
+- [x] LOC counter (simple line count, skip binary/non-text files)
+- [x] Complexity proxy: regex-based keyword counter (`if/for/while/switch/case/catch/&&/||`), documented as a heuristic not a real metric
+- [x] File role classifier: heuristics on path + extension + filename patterns (e.g. `*.test.*` → test, `models/*` or `*Model*` → model, `routes/*`/`api/*` → API route, `*.config.*` → config, `components/*` or `.tsx` with capitalized default export → component)
+- [x] Build the nested tree JSON (folders contain children) matching the schema in PROJECT.md
+- [x] Unit tests: classifier on a handful of known example paths, LOC counter on fixture files
+- [x] Manual test: run pipeline against 2-3 real repos of different sizes (small, medium, React-scale) and sanity check output JSON
 
 ## Phase 2 — Layout algorithm (still no 3D — render as 2D rectangles first)
 
