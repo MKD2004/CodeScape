@@ -5,24 +5,11 @@ import {
   type LayoutFolderNode,
   type LayoutTreeNode,
 } from '../layout/layoutTree'
-
-const LANGUAGE_COLORS: Record<string, string> = {
-  TypeScript: '#3178c6',
-  JavaScript: '#f1e05a',
-  Python: '#3572a5',
-  Go: '#00add8',
-  Rust: '#dea584',
-  CSS: '#563d7c',
-  SCSS: '#c6538c',
-  HTML: '#e34c26',
-  JSON: '#8bc34a',
-  Markdown: '#ffffff',
-  YAML: '#cb171e',
-}
+import { getLanguageColor } from '../scene/colors'
 
 function colorFor(node: LayoutTreeNode): string {
   if (node.type === 'folder') return 'transparent'
-  return LANGUAGE_COLORS[node.language] ?? '#666677'
+  return getLanguageColor(node.language)
 }
 
 function TreemapNode({ node }: { node: LayoutTreeNode }) {

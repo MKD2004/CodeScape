@@ -52,13 +52,13 @@ This file is the source of truth for progress. Check off tasks (`- [x]`) as they
 
 ## Phase 3 — 3D scene (the core wow)
 
-- [ ] Convert 2D treemap rectangles into `InstancedMesh` building extrusions (height = LOC log-scaled, color = language)
-- [ ] Building archetypes by role (start with 3-4 distinct shapes: component/API/model/test/default — expand later)
-- [ ] Ground plane / district tiles from top-level folder rectangles
-- [ ] Camera: orbit control for initial "arrival" view, switch to first-person walk (WASD + mouse-look via `PointerLockControls`) on entering the city
-- [ ] Click-to-inspect: raycast on click → show metrics panel (path, LOC, language, complexity, last modified) via `@react-three/drei` `Html` or a fixed UI overlay
-- [ ] Basic lighting: one directional light + ambient, fog for depth/draw-distance
-- [ ] Performance pass: confirm InstancedMesh + LOD keeps frame rate solid on a large repo (test with something React-scale, thousands of files)
+- [x] Convert 2D treemap rectangles into `InstancedMesh` building extrusions (height = LOC log-scaled, color = language)
+- [x] Building archetypes by role (start with 3-4 distinct shapes: component/API/model/test/default — expand later)
+- [x] Ground plane / district tiles from top-level folder rectangles
+- [x] Camera: orbit control for initial "arrival" view, switch to first-person walk (WASD + mouse-look via `PointerLockControls`) on entering the city
+- [x] Click-to-inspect: raycast on click → show metrics panel (path, LOC, language, complexity, last modified) via `@react-three/drei` `Html` or a fixed UI overlay
+- [x] Basic lighting: one directional light + ambient, fog for depth/draw-distance
+- [x] Performance pass: confirm InstancedMesh + LOD keeps frame rate solid on a large repo (test with something React-scale, thousands of files)
 
 ## Phase 4 — Polish & ship v1
 

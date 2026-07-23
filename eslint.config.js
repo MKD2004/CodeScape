@@ -26,5 +26,13 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    files: ['src/scene/**/*.{ts,tsx}'],
+    rules: {
+      // three.js/R3F objects (camera, meshes) are mutated imperatively by
+      // design (e.g. every frame in useFrame) — not compatible with this rule.
+      'react-hooks/immutability': 'off',
+    },
+  },
   prettier,
 )
