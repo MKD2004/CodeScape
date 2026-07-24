@@ -1,16 +1,36 @@
-import { Canvas } from '@react-three/fiber'
-import { useMemo } from 'react'
+import { Canvas, useThree } from '@react-three/fiber'
+import { useEffect, useMemo } from 'react'
 import type { RepoCityData } from '../data/pipeline'
 import { layoutTree } from '../layout/layoutTree'
 import { Buildings } from './Buildings'
 import { CameraRig } from './CameraRig'
 import { CityLighting } from './CityLighting'
 import { Districts } from './Districts'
-import { prepareScene } from './prepareScene'
+import { prepareScene, type PreparedScene } from './prepareScene'
 
 const LAYOUT_SIZE = 300
 
-export function CityScene({ data }: { data: RepoCityData }) {
+function CanvasReadyBridge({
+  onReady,
+}: {
+  onReady: (canvas: HTMLCanvasElement) => void
+}) {
+  const { gl } = useThree()
+  useEffect(() => {
+    onReady(gl.domElement)
+  }, [gl, onReady])
+  return null
+}
+
+export function CityScene({
+  data,
+  onSceneReady,
+  onCanvasReady,
+}: {
+  data: RepoCityData
+  onSceneReady?: (scene: PreparedScene) => void
+  onCanvasReady?: (canvas: HTMLCanvasElement) => void
+}) {
   const scene = useMemo(() => {
     const layout = layoutTree(data.root, {
       x: 0,
@@ -21,6 +41,10 @@ export function CityScene({ data }: { data: RepoCityData }) {
     return prepareScene(layout)
   }, [data])
 
+  useEffect(() => {
+    onSceneReady?.(scene)
+  }, [scene, onSceneReady])
+
   const drawDistance = Math.max(LAYOUT_SIZE, 150)
   const startDistance = Math.max(scene.groundWidth, scene.groundDepth, 20) * 0.7
 
@@ -28,6 +52,7 @@ export function CityScene({ data }: { data: RepoCityData }) {
     <Canvas
       className="absolute inset-0"
       shadows
+      gl={{ preserveDrawingBuffer: true }}
       camera={{
         position: [startDistance, startDistance * 0.8, startDistance],
         fov: 55,
@@ -36,6 +61,7 @@ export function CityScene({ data }: { data: RepoCityData }) {
       }}
     >
       <color attach="background" args={['#0a0a0f']} />
+      {onCanvasReady && <CanvasReadyBridge onReady={onCanvasReady} />}
       <CityLighting drawDistance={drawDistance} />
       <Districts
         districts={scene.districts}

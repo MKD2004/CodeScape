@@ -62,12 +62,12 @@ This file is the source of truth for progress. Check off tasks (`- [x]`) as they
 
 ## Phase 4 — Polish & ship v1
 
-- [ ] Landing screen: URL input, validation, loading state with progress messaging
-- [ ] "City generation" reveal animation: buildings rise from ground on load (staggered Y-scale animation)
-- [ ] Minimap corner overlay (can be simple — colored top-down projection of districts)
-- [ ] Aerial screenshot capture (canvas → image export) with a clean title card overlay (repo name, file count, LOC, district count)
-- [ ] Shareable URL per repo (`/city/{owner}/{repo}`) if a backend proxy exists to make this meaningful; otherwise a client-side-only version that re-fetches on load is fine for v1
-- [ ] Error states: repo not found, private repo, rate-limited, empty repo
+- [x] Landing screen: URL input, validation, loading state with progress messaging
+- [x] "City generation" reveal animation: buildings rise from ground on load (staggered Y-scale animation)
+- [x] Minimap corner overlay (can be simple — colored top-down projection of districts)
+- [x] Aerial screenshot capture (canvas → image export) with a clean title card overlay (repo name, file count, LOC, district count)
+- [x] Shareable URL per repo (`/city/{owner}/{repo}`) if a backend proxy exists to make this meaningful; otherwise a client-side-only version that re-fetches on load is fine for v1
+- [x] Error states: repo not found, private repo, rate-limited, empty repo
 - [ ] Deploy to Vercel, confirm it works end-to-end on a fresh browser/session
 - [ ] README with screenshots/GIF, clear about what this is and how it differs from "Git City" (see PROJECT.md)
 
