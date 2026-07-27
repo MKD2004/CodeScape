@@ -4,7 +4,7 @@ import { CityScene } from './scene/CityScene'
 import type { PreparedScene } from './scene/prepareScene'
 import { captureCityScreenshot, downloadDataUrl } from './scene/screenshot'
 import { useCityStore } from './state/cityStore'
-import { LandingScreen, type LoadProgress } from './ui/LandingScreen'
+import { PixelHero, type LoadProgress } from './ui/PixelHero'
 import { Minimap } from './ui/Minimap'
 import { MetricsPanel } from './ui/MetricsPanel'
 import { friendlyErrorMessage } from './ui/errorMessage'
@@ -95,20 +95,18 @@ function App() {
 
   if (!data) {
     return (
-      <div className="relative h-screen w-screen overflow-hidden bg-[#0a0a0f] text-white">
-        <LandingScreen
-          input={input}
-          onInputChange={setInput}
-          onLoad={() => void loadRepo(input)}
-          onExampleClick={(repo) => {
-            setInput(repo)
-            void loadRepo(repo)
-          }}
-          status={status}
-          error={error}
-          progress={progress}
-        />
-      </div>
+      <PixelHero
+        input={input}
+        onInputChange={setInput}
+        onLoad={() => void loadRepo(input)}
+        onExampleClick={(repo) => {
+          setInput(repo)
+          void loadRepo(repo)
+        }}
+        status={status}
+        error={error}
+        progress={progress}
+      />
     )
   }
 
