@@ -85,6 +85,84 @@ describe('prepareScene', () => {
     }
   })
 
+  it('draws one dashed centreline per road, not one per district', () => {
+    const tree = buildTree([
+      file('src/a.ts', 40),
+      file('src/b.ts', 60),
+      file('docs/c.md', 50),
+      file('test/d.ts', 55),
+    ])
+    const layout = layoutTree(tree, CONTAINER)
+    const scene = prepareScene(layout)
+
+    expect(scene.roadDashes.length).toBeGreaterThan(0)
+    const positions = scene.roadDashes.map(
+      (d) => `${d.horizontal}:${d.x.toFixed(2)}:${d.z.toFixed(2)}`,
+    )
+    expect(new Set(positions).size).toBe(positions.length)
+
+    // Every dash must sit on a shared plot boundary — the true centre of the
+    // road. Drawing them inside each district's own gutter instead puts two
+    // parallel lines in every road.
+    const centerX = CONTAINER.x + CONTAINER.width / 2
+    const centerZ = CONTAINER.y + CONTAINER.height / 2
+    const edgesX = new Set<string>()
+    const edgesZ = new Set<string>()
+    for (const plot of layout.children) {
+      edgesX.add((plot.rect.x - centerX).toFixed(2))
+      edgesX.add((plot.rect.x + plot.rect.width - centerX).toFixed(2))
+      edgesZ.add((plot.rect.y - centerZ).toFixed(2))
+      edgesZ.add((plot.rect.y + plot.rect.height - centerZ).toFixed(2))
+    }
+    for (const dash of scene.roadDashes) {
+      const onEdge = dash.horizontal
+        ? edgesZ.has(dash.z.toFixed(2))
+        : edgesX.has(dash.x.toFixed(2))
+      expect(onEdge).toBe(true)
+    }
+  })
+
+  it('places street props on the sidewalk, never on the road', () => {
+    const tree = buildTree([
+      file('src/a.ts', 40),
+      file('src/b.ts', 60),
+      file('docs/c.md', 50),
+    ])
+    const layout = layoutTree(tree, CONTAINER)
+    const scene = prepareScene(layout)
+
+    const props = [...scene.trees, ...scene.streetLamps, ...scene.benches]
+    expect(props.length).toBeGreaterThan(0)
+    for (const prop of props) {
+      const onGround = scene.districts.some(
+        (d) =>
+          Math.abs(prop.x - d.x) <= d.curbWidth / 2 &&
+          Math.abs(prop.z - d.z) <= d.curbDepth / 2,
+      )
+      expect(onGround).toBe(true)
+    }
+  })
+
+  it('keeps every building inside its district plaza', () => {
+    const files = Array.from({ length: 40 }, (_, i) =>
+      file(`src/mod${i}/f${i}.ts`, i * 7 + 3),
+    )
+    const tree = buildTree([...files, file('docs/readme.md', 20)])
+    const layout = layoutTree(tree, CONTAINER)
+    const scene = prepareScene(layout)
+
+    for (const building of scene.buildings) {
+      const district = scene.districts.find((d) =>
+        building.file.path.startsWith(`${d.path}/`),
+      )
+      expect(district).toBeDefined()
+      expect(Math.abs(building.x - district!.x) + building.width / 2).
+        toBeLessThanOrEqual(district!.plazaWidth / 2 + 1e-6)
+      expect(Math.abs(building.z - district!.z) + building.depth / 2).
+        toBeLessThanOrEqual(district!.plazaDepth / 2 + 1e-6)
+    }
+  })
+
   it('gives every building a positive footprint', () => {
     const files = Array.from({ length: 200 }, (_, i) => file(`f${i}.ts`, i + 1))
     const tree = buildTree(files)
