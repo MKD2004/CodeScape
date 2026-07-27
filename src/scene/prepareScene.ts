@@ -31,10 +31,10 @@ export interface PreparedScene {
   groundDepth: number
 }
 
-const FOOTPRINT_GUTTER_RATIO = 0.24
+const FOOTPRINT_GUTTER_RATIO = 0.12
 const MIN_FOOTPRINT = 0.05
-const HEIGHT_UNIT = 3.1
-const MIN_HEIGHT = 0.9
+const HEIGHT_UNIT = 4.4
+const MIN_HEIGHT = 1.3
 
 const DISTRICT_PALETTE = [
   '#8bc44c',
