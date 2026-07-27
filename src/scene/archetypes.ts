@@ -1,12 +1,21 @@
 import type { FileRole } from '../data/classify'
 
-export type Archetype = 'component' | 'api' | 'model' | 'test' | 'default'
+export type Archetype =
+  | 'component'
+  | 'api'
+  | 'model'
+  | 'test'
+  | 'config'
+  | 'style'
+  | 'default'
 
 export const ARCHETYPES: Archetype[] = [
   'component',
   'api',
   'model',
   'test',
+  'config',
+  'style',
   'default',
 ]
 
@@ -15,8 +24,8 @@ const ROLE_ARCHETYPE: Record<FileRole, Archetype> = {
   api: 'api',
   model: 'model',
   test: 'test',
-  config: 'default',
-  style: 'default',
+  config: 'config',
+  style: 'style',
   doc: 'default',
   other: 'default',
 }
