@@ -1,4 +1,5 @@
 import { Canvas, useThree } from '@react-three/fiber'
+import { Sky } from '@react-three/drei'
 import { useEffect, useMemo } from 'react'
 import type { RepoCityData } from '../data/pipeline'
 import { layoutTree } from '../layout/layoutTree'
@@ -60,7 +61,7 @@ export function CityScene({
         far: drawDistance * 1.5,
       }}
     >
-      <color attach="background" args={['#0a0a0f']} />
+      <Sky sunPosition={[40, 60, 20]} turbidity={2} rayleigh={0.8} />
       {onCanvasReady && <CanvasReadyBridge onReady={onCanvasReady} />}
       <CityLighting drawDistance={drawDistance} />
       <Districts
