@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Silkscreen:wght@400;700&display=swap');
 @import 'tailwindcss';
 
 :root {
@@ -9,4 +10,59 @@ body {
   min-height: 100vh;
   background: #0a0a0f;
   color: #e5e4e7;
+}
+
+.font-pixel-head {
+  font-family: 'Press Start 2P', monospace;
+}
+
+.font-pixel-body {
+  font-family: 'Silkscreen', monospace;
+}
+
+.pixel-border {
+  border: 3px solid #0a0a0a;
+}
+
+.pixel-shadow {
+  box-shadow: 4px 4px 0 0 #0a0a0a;
+}
+
+.pixel-outline-text {
+  -webkit-text-stroke: 2px #0a0a0a;
+  paint-order: stroke fill;
+}
+
+@keyframes window-glow-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 2px 1px currentColor;
+    filter: brightness(1);
+  }
+  50% {
+    box-shadow: 0 0 7px 3px currentColor;
+    filter: brightness(1.35);
+  }
+}
+
+.window-glow {
+  animation: window-glow-pulse 2.2s ease-in-out infinite;
+  animation-delay: calc(var(--glow-delay, 0) * 1s);
+}
+
+@keyframes star-twinkle {
+  0%,
+  100% {
+    opacity: 0.5;
+    box-shadow: 0 0 2px 1px rgba(255, 255, 255, 0.6);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 6px 2px rgba(255, 255, 255, 0.9);
+  }
+}
+
+.star-glow {
+  animation: star-twinkle 2.6s ease-in-out infinite;
+  animation-delay: calc(var(--glow-delay, 0) * 1s);
 }
