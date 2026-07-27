@@ -31,18 +31,18 @@ export interface PreparedScene {
   groundDepth: number
 }
 
-const FOOTPRINT_GUTTER_RATIO = 0.08
+const FOOTPRINT_GUTTER_RATIO = 0.24
 const MIN_FOOTPRINT = 0.05
-const HEIGHT_UNIT = 1.4
-const MIN_HEIGHT = 0.4
+const HEIGHT_UNIT = 3.1
+const MIN_HEIGHT = 0.9
 
 const DISTRICT_PALETTE = [
-  '#2a3142',
-  '#33263a',
-  '#243b33',
-  '#3a2f24',
-  '#242f3a',
-  '#3a2424',
+  '#8bc44c',
+  '#e8c15a',
+  '#6fb8d1',
+  '#e0895a',
+  '#c9a8e0',
+  '#e07a7a',
 ]
 
 function heightForLoc(loc: number): number {
