@@ -5,9 +5,15 @@ import type { RepoCityData } from '../data/pipeline'
 import { layoutTree } from '../layout/layoutTree'
 import { Buildings } from './Buildings'
 import { CameraRig } from './CameraRig'
+import { CityClouds } from './CityClouds'
 import { CityLighting } from './CityLighting'
 import { Districts } from './Districts'
+import { RoadMarkings } from './RoadMarkings'
+import { StreetFurniture } from './StreetFurniture'
+import { Sun } from './Sun'
 import { prepareScene, type PreparedScene } from './prepareScene'
+
+const SUN_POSITION: [number, number, number] = [400, 600, 200]
 
 const LAYOUT_SIZE = 300
 
@@ -62,12 +68,20 @@ export function CityScene({
       }}
     >
       <Sky sunPosition={[40, 60, 20]} turbidity={2} rayleigh={0.8} />
+      <Sun position={SUN_POSITION} />
+      <CityClouds />
       {onCanvasReady && <CanvasReadyBridge onReady={onCanvasReady} />}
       <CityLighting drawDistance={drawDistance} />
       <Districts
         districts={scene.districts}
         groundWidth={scene.groundWidth}
         groundDepth={scene.groundDepth}
+      />
+      <RoadMarkings dashes={scene.roadDashes} />
+      <StreetFurniture
+        trees={scene.trees}
+        streetLamps={scene.streetLamps}
+        benches={scene.benches}
       />
       <Buildings buildings={scene.buildings} />
       <CameraRig />
