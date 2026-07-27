@@ -1,9 +1,14 @@
 export function CityLighting({ drawDistance }: { drawDistance: number }) {
   return (
     <>
-      <ambientLight intensity={0.55} />
-      <directionalLight position={[40, 60, 20]} intensity={1.2} castShadow />
-      <fog attach="fog" args={['#0a0a0f', drawDistance * 0.3, drawDistance]} />
+      <hemisphereLight args={['#bfe3ff', '#d8c9a0', 0.75]} />
+      <directionalLight
+        position={[40, 60, 20]}
+        intensity={2.2}
+        castShadow
+        shadow-mapSize={[2048, 2048]}
+      />
+      <fog attach="fog" args={['#bfe3ff', drawDistance * 0.4, drawDistance]} />
     </>
   )
 }
