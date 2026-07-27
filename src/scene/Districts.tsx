@@ -1,12 +1,9 @@
 import type { DistrictTile } from './prepareScene'
 
-const ROAD_GUTTER_RATIO = 0.1
-const MAX_ROAD_GUTTER = 3.2
-const CURB_INSET = 0.35
-
-function roadGutter(size: number): number {
-  return Math.min(size * ROAD_GUTTER_RATIO, MAX_ROAD_GUTTER)
-}
+/** Asphalt sits just below the district tiles — a gap small enough to be
+ * invisible, large enough to avoid z-fighting. Buildings stand at y=0, flush
+ * with the district ground, so no kerb or plinth outlines their bases. */
+const ROAD_Y = -0.03
 
 export function Districts({
   districts,
@@ -19,35 +16,27 @@ export function Districts({
 }) {
   return (
     <group>
-      {/* Asphalt roads — the ground plane itself is the road network; districts sit as raised plazas above it. */}
+      {/* The ground plane itself is the road network; district tiles are laid
+          flat on top of it, inset by half a road width on every side. */}
       <mesh
-        position={[0, -0.05, 0]}
+        position={[0, ROAD_Y, 0]}
         rotation={[-Math.PI / 2, 0, 0]}
         receiveShadow
       >
         <planeGeometry args={[groundWidth * 1.4, groundDepth * 1.4]} />
         <meshStandardMaterial color="#55585f" roughness={0.95} />
       </mesh>
-      {districts.map((district) => {
-        const gutterW = roadGutter(district.width)
-        const gutterD = roadGutter(district.depth)
-        const curbWidth = Math.max(district.width - gutterW * 2, 0.1)
-        const curbDepth = Math.max(district.depth - gutterD * 2, 0.1)
-        const plazaWidth = Math.max(curbWidth - CURB_INSET, 0.05)
-        const plazaDepth = Math.max(curbDepth - CURB_INSET, 0.05)
-        return (
-          <group key={district.path}>
-            <mesh position={[district.x, -0.02, district.z]} receiveShadow>
-              <boxGeometry args={[curbWidth, 0.06, curbDepth]} />
-              <meshStandardMaterial color="#d8d4c8" roughness={0.9} />
-            </mesh>
-            <mesh position={[district.x, 0.01, district.z]} receiveShadow>
-              <boxGeometry args={[plazaWidth, 0.06, plazaDepth]} />
-              <meshStandardMaterial color={district.color} roughness={0.9} />
-            </mesh>
-          </group>
-        )
-      })}
+      {districts.map((district) => (
+        <mesh
+          key={district.path}
+          position={[district.x, 0, district.z]}
+          rotation={[-Math.PI / 2, 0, 0]}
+          receiveShadow
+        >
+          <planeGeometry args={[district.curbWidth, district.curbDepth]} />
+          <meshStandardMaterial color={district.color} roughness={0.9} />
+        </mesh>
+      ))}
     </group>
   )
 }
