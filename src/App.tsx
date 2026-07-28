@@ -26,31 +26,34 @@ function App() {
   const setCameraMode = useCityStore((s) => s.setCameraMode)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
-  const loadRepo = useCallback(async (raw: string) => {
-    const [owner, repo] = raw.trim().split('/')
-    if (!owner || !repo) {
-      setStatus('error')
-      setError('Enter a repo as "owner/repo"')
-      return
-    }
+  const loadRepo = useCallback(
+    async (raw: string) => {
+      const [owner, repo] = raw.trim().split('/')
+      if (!owner || !repo) {
+        setStatus('error')
+        setError('Enter a repo as "owner/repo"')
+        return
+      }
 
-    setStatus('loading')
-    setError('')
-    setProgress(null)
-    setScene(null)
-    try {
-      const result = await buildRepoCity(owner, repo, {
-        onProgress: (done, total) => setProgress({ done, total }),
-      })
-      setData(result)
-      setCameraMode('orbit')
-      setStatus('idle')
-      window.history.pushState(null, '', `/city/${owner}/${repo}`)
-    } catch (err) {
-      setStatus('error')
-      setError(friendlyErrorMessage(err))
-    }
-  }, [setCameraMode])
+      setStatus('loading')
+      setError('')
+      setProgress(null)
+      setScene(null)
+      try {
+        const result = await buildRepoCity(owner, repo, {
+          onProgress: (done, total) => setProgress({ done, total }),
+        })
+        setData(result)
+        setCameraMode('orbit')
+        setStatus('idle')
+        window.history.pushState(null, '', `/city/${owner}/${repo}`)
+      } catch (err) {
+        setStatus('error')
+        setError(friendlyErrorMessage(err))
+      }
+    },
+    [setCameraMode],
+  )
 
   useEffect(() => {
     const initial = parseRepoFromPath()
@@ -88,7 +91,9 @@ function App() {
       repo: data.repo,
       fileCount: data.fileCount,
       totalLoc: data.totalLoc,
-      districtCount: scene.districts.length,
+      // Top-level communities, matching what the minimap shows — counting
+      // every nested folder would report a number the city never displays.
+      districtCount: scene.districts.filter((d) => d.level === 0).length,
     })
     downloadDataUrl(dataUrl, `codescape-${data.owner}-${data.repo}.png`)
   }
@@ -139,7 +144,9 @@ function App() {
           </button>
           <button
             className="rounded bg-white/10 px-3 py-1.5 text-sm hover:bg-white/20"
-            onClick={() => setCameraMode(cameraMode === 'walk' ? 'orbit' : 'walk')}
+            onClick={() =>
+              setCameraMode(cameraMode === 'walk' ? 'orbit' : 'walk')
+            }
           >
             {cameraMode === 'walk' ? 'Exit walk mode' : 'Enter city (walk)'}
           </button>
