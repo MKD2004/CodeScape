@@ -4,17 +4,11 @@ import { useFrame } from '@react-three/fiber'
 import type { ThreeEvent } from '@react-three/fiber'
 import { ARCHETYPES, type Archetype } from './archetypes'
 import { ARCHETYPE_GEOMETRIES } from './geometry'
-import { getFacadeTexture } from './facadeTexture'
+import { createFacadeMaterial } from './facadeMaterial'
 import type { BuildingInstance } from './prepareScene'
 import { useCityStore } from '../state/cityStore'
 
-const material = new THREE.MeshStandardMaterial({
-  toneMapped: false,
-  flatShading: true,
-  roughness: 0.85,
-  metalness: 0,
-  map: getFacadeTexture(),
-})
+const material = createFacadeMaterial()
 const SELECTED_BRIGHTNESS = 1.6
 
 const RISE_DURATION_MS = 550
