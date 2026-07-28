@@ -1,5 +1,9 @@
 import type { FileNode } from '../data/tree'
-import type { LayoutFolderNode, LayoutTreeNode } from '../layout/layoutTree'
+import type {
+  LayoutFileNode,
+  LayoutFolderNode,
+  LayoutTreeNode,
+} from '../layout/layoutTree'
 import { archetypeForRole, type Archetype } from './archetypes'
 import { getLanguageColor } from './colors'
 
@@ -17,15 +21,24 @@ export interface BuildingInstance {
 export interface DistrictTile {
   name: string
   path: string
+  /**
+   * Nesting level of this community. 0 is a top-level folder, which fronts
+   * onto the road network; 1 and deeper are folders inside it, drawn as blocks
+   * within their parent's grounds. A file sitting loose in the repo root is
+   * never a community and gets no tile at all.
+   */
+  level: number
   x: number
   z: number
-  /** Full plot, road included — the treemap rect. Used by the minimap. */
+  /** Full plot, gutter included — the treemap rect. Used by the minimap. */
   width: number
   depth: number
-  /** Ground tile: the plot minus the road on every side. Its edge is the kerb. */
+  /** The visible community boundary: the plot minus its gutter on every side.
+   * At level 0 that gutter is half a road, deeper in it is the lane that
+   * separates one block from its siblings. */
   curbWidth: number
   curbDepth: number
-  /** Buildable area: the ground tile minus the sidewalk verge on every side. */
+  /** Buildable area: the boundary minus the verge inside it. */
   plazaWidth: number
   plazaDepth: number
   color: string
@@ -58,10 +71,6 @@ export interface PreparedScene {
 // and the walk-mode eye height (1.7) all stay in proportion to each other.
 const FOOTPRINT_GUTTER_RATIO = 0.14
 const MIN_FOOTPRINT = 0.05
-/** Ceiling on a single building's footprint. Without it a small repo spreads a
- * handful of files across the whole layout and every "building" reads as a
- * city-block-sized slab that dwarfs the trees and lamps beside it. */
-const MAX_FOOTPRINT = 26
 const HEIGHT_UNIT = 4.4
 /** Roughly two storeys — nothing should read as a shed next to a 6m tree. */
 const MIN_HEIGHT = 5.5
@@ -69,6 +78,17 @@ const MIN_HEIGHT = 5.5
  * LOC, but a small file in a dense district also gets a narrow footprint, and
  * without this the pair produces a needle rather than a building. */
 const MAX_ASPECT = 9
+/** Widest a building may sprawl relative to its own height — the other half of
+ * the same rule, keeping a broad plot from producing a pancake.
+ *
+ * This deliberately replaces an absolute footprint ceiling. A fixed cap in
+ * metres does not scale with the plot it sits in: a folder holding one file
+ * gets a plot sized by that file's LOC, and capping the building at a constant
+ * left the rest of the plot as a wide skirt of bare ground around the base. */
+const MAX_SPREAD = 2.6
+/** Floor for any tile or plaza dimension, so a sliver of a plot still produces
+ * geometry with a positive size. */
+const MIN_TILE = 0.05
 
 /** Half-width of the road that runs between two neighbouring plots. Both
  * neighbours give up this much, so every road is `ROAD_HALF_WIDTH * 2` wide and
@@ -92,6 +112,25 @@ function sidewalkWidth(curbSize: number): number {
   return Math.min(SIDEWALK_WIDTH, curbSize * MAX_SIDEWALK_RATIO)
 }
 
+/** Gap a nested community gives up on every side. Its sibling gives up the
+ * same, so the parent's ground shows through between them as a lane — that
+ * strip is what makes each folder's boundary visible. */
+const BLOCK_GUTTER = 2.4
+const MAX_BLOCK_RATIO = 0.12
+
+function blockGutter(size: number): number {
+  return Math.min(BLOCK_GUTTER, size * MAX_BLOCK_RATIO)
+}
+
+/** Margin inside a nested community's boundary, so its towers stand within the
+ * grounds rather than straddling the edge. */
+const BLOCK_MARGIN = 1.4
+const MAX_BLOCK_MARGIN_RATIO = 0.09
+
+function blockMargin(curbSize: number): number {
+  return Math.min(BLOCK_MARGIN, curbSize * MAX_BLOCK_MARGIN_RATIO)
+}
+
 const DISTRICT_PALETTE = [
   '#8bc44c',
   '#e8c15a',
@@ -101,6 +140,25 @@ const DISTRICT_PALETTE = [
   '#e07a7a',
 ]
 
+/** Mixes a hex colour towards white (positive amount) or black (negative). */
+function shade(color: string, amount: number): string {
+  const value = Number.parseInt(color.slice(1), 16)
+  const target = amount < 0 ? 0 : 255
+  const k = Math.abs(amount)
+  const mix = (channel: number) => Math.round(channel + (target - channel) * k)
+  const r = mix((value >> 16) & 255)
+  const g = mix((value >> 8) & 255)
+  const b = mix(value & 255)
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`
+}
+
+/** A nested community keeps its parent's hue — they are one neighbourhood —
+ * but alternates lighter and darker per level, so its boundary stays legible
+ * against the ground it sits on. */
+function nestedColor(parent: string, level: number): string {
+  return shade(parent, level % 2 === 1 ? -0.18 : 0.16)
+}
+
 /** Spacing along the sidewalk between consecutive props (lamps and trees
  * alternate, so each kind repeats every `PROP_STEP * 2`). */
 const PROP_STEP = 9
@@ -109,11 +167,26 @@ const BENCH_EVERY = 4
 const BENCH_INSET = 0.9
 const DASH_SPACING = 5
 
-interface PlotTransform {
-  centerX: number
-  centerZ: number
-  scaleX: number
-  scaleZ: number
+/**
+ * One axis of the map from layout space into world space, as
+ * `world = layout * scale + offset`. Every community shrinks its children into
+ * its own grounds; composing these keeps a tower inside the boundary of every
+ * ancestor without any node needing to know how deep it sits.
+ */
+interface Axis {
+  scale: number
+  offset: number
+}
+
+const IDENTITY: Axis = { scale: 1, offset: 0 }
+
+function project(axis: Axis, value: number): number {
+  return value * axis.scale + axis.offset
+}
+
+/** Composes a shrink by `k` about world point `center` onto an existing axis. */
+function shrinkAbout(axis: Axis, center: number, k: number): Axis {
+  return { scale: axis.scale * k, offset: axis.offset * k + center * (1 - k) }
 }
 
 function pointOnRectPerimeter(
@@ -134,9 +207,9 @@ function pointOnRectPerimeter(
   return { x: -halfW, z: halfD - d, nx: -1, nz: 0 }
 }
 
-/** Walks the sidewalk ring of one district, dropping alternating lamps and
- * trees plus the occasional bench. The ring sits between the kerb and the
- * plaza, so nothing lands on the asphalt. */
+/** Walks the sidewalk ring of one street-level community, dropping alternating
+ * lamps and trees plus the occasional bench. The ring sits between the kerb and
+ * the plaza, so nothing lands on the asphalt. */
 function perimeterProps(
   district: DistrictTile,
   lamps: StreetProp[],
@@ -197,7 +270,9 @@ function lineDashes(
 }
 
 /** One dashed centreline per plot edge. Neighbouring plots share an edge, so
- * the deduped result is one line down the middle of each road. */
+ * the deduped result is one line down the middle of each road. Only the
+ * street-level plots get these — the lanes between nested blocks are internal
+ * paths, not roads. */
 function plotRoadDashes(
   minX: number,
   minZ: number,
@@ -218,149 +293,190 @@ function heightForLoc(loc: number): number {
   return Math.max(MIN_HEIGHT, Math.log2(loc + 1) * HEIGHT_UNIT)
 }
 
-function footprint(size: number): number {
-  return Math.min(
-    Math.max(size * (1 - FOOTPRINT_GUTTER_RATIO), MIN_FOOTPRINT),
-    MAX_FOOTPRINT,
+/** Footprint from the plot, leaving a proportional gutter so neighbouring
+ * buildings never touch, then held to `MAX_SPREAD` so a broad plot cannot flatten
+ * its building into a slab. */
+function footprint(plotSize: number, height: number): number {
+  const size = Math.min(
+    plotSize * (1 - FOOTPRINT_GUTTER_RATIO),
+    height * MAX_SPREAD,
   )
+  return Math.max(size, MIN_FOOTPRINT)
 }
 
-function collectBuildings(
-  node: LayoutTreeNode,
-  centerX: number,
-  centerZ: number,
-  out: BuildingInstance[],
-): void {
-  if (node.rect.width <= 0 || node.rect.height <= 0) return
-
-  if (node.type === 'file') {
-    out.push({
-      file: node,
-      archetype: archetypeForRole(node.role),
-      x: node.rect.x + node.rect.width / 2 - centerX,
-      z: node.rect.y + node.rect.height / 2 - centerZ,
-      width: footprint(node.rect.width),
-      depth: footprint(node.rect.height),
-      height: heightForLoc(node.loc),
-      color: getLanguageColor(node.language),
-    })
-    return
-  }
-
-  for (const child of node.children)
-    collectBuildings(child, centerX, centerZ, out)
+interface SceneContext {
+  centerX: number
+  centerZ: number
+  districts: DistrictTile[]
+  buildings: BuildingInstance[]
 }
 
-/** Squeezes a plot's buildings into its buildable area, so the treemap keeps
- * its relative arrangement but nothing spills onto the sidewalk or the road. */
-function applyPlotTransform(
-  buildings: BuildingInstance[],
-  transform: PlotTransform,
-  out: BuildingInstance[],
+function addBuilding(
+  node: LayoutFileNode,
+  ax: Axis,
+  az: Axis,
+  ctx: SceneContext,
 ): void {
-  const { centerX, centerZ, scaleX, scaleZ } = transform
-  for (const building of buildings) {
-    building.x = centerX + (building.x - centerX) * scaleX
-    building.z = centerZ + (building.z - centerZ) * scaleZ
-    building.width = Math.max(building.width * scaleX, MIN_FOOTPRINT)
-    building.depth = Math.max(building.depth * scaleZ, MIN_FOOTPRINT)
-    building.height = Math.min(
-      building.height,
-      Math.min(building.width, building.depth) * MAX_ASPECT,
-    )
-    out.push(building)
+  const plotWidth = node.rect.width * ax.scale
+  const plotDepth = node.rect.height * az.scale
+  if (plotWidth <= 0 || plotDepth <= 0) return
+
+  // Height comes from LOC, then bounds the footprint; the footprint bounds the
+  // height back only in the opposite regime (a narrow plot), so the two clamps
+  // never fight over the same building.
+  const storeys = heightForLoc(node.loc)
+  const width = footprint(plotWidth, storeys)
+  const depth = footprint(plotDepth, storeys)
+  ctx.buildings.push({
+    file: node,
+    archetype: archetypeForRole(node.role),
+    x: project(ax, node.rect.x + node.rect.width / 2 - ctx.centerX),
+    z: project(az, node.rect.y + node.rect.height / 2 - ctx.centerZ),
+    width,
+    depth,
+    height: Math.min(storeys, Math.min(width, depth) * MAX_ASPECT),
+    color: getLanguageColor(node.language),
+  })
+}
+
+/**
+ * Turns one folder into a community: a bounded plot of ground carrying its own
+ * towers, then recurses so every folder inside it becomes a smaller community
+ * within those grounds.
+ */
+function addCommunity(
+  folder: LayoutFolderNode,
+  level: number,
+  color: string,
+  ax: Axis,
+  az: Axis,
+  ctx: SceneContext,
+): void {
+  const width = folder.rect.width * ax.scale
+  const depth = folder.rect.height * az.scale
+  if (width <= 0 || depth <= 0) return
+
+  const x = project(ax, folder.rect.x + folder.rect.width / 2 - ctx.centerX)
+  const z = project(az, folder.rect.y + folder.rect.height / 2 - ctx.centerZ)
+
+  // At street level the plot gives up half a road on each side; deeper in it
+  // gives up a narrow lane instead, which is what separates one block of a
+  // community from the next.
+  const gutterW = level === 0 ? roadGutter(width) : blockGutter(width)
+  const gutterD = level === 0 ? roadGutter(depth) : blockGutter(depth)
+  const curbWidth = Math.max(width - gutterW * 2, MIN_TILE)
+  const curbDepth = Math.max(depth - gutterD * 2, MIN_TILE)
+
+  const vergeW = level === 0 ? sidewalkWidth(curbWidth) : blockMargin(curbWidth)
+  const vergeD = level === 0 ? sidewalkWidth(curbDepth) : blockMargin(curbDepth)
+  const plazaWidth = Math.max(curbWidth - vergeW * 2, MIN_TILE)
+  const plazaDepth = Math.max(curbDepth - vergeD * 2, MIN_TILE)
+
+  ctx.districts.push({
+    name: folder.name,
+    path: folder.path,
+    level,
+    x,
+    z,
+    width,
+    depth,
+    curbWidth,
+    curbDepth,
+    plazaWidth,
+    plazaDepth,
+    color,
+  })
+
+  const childAx = shrinkAbout(ax, x, plazaWidth / width)
+  const childAz = shrinkAbout(az, z, plazaDepth / depth)
+
+  for (const child of folder.children) {
+    if (child.type === 'folder') {
+      addCommunity(
+        child,
+        level + 1,
+        nestedColor(color, level + 1),
+        childAx,
+        childAz,
+        ctx,
+      )
+    } else {
+      addBuilding(child, childAx, childAz, ctx)
+    }
   }
 }
 
 /** Pure: turns a laid-out file tree into flat building/district data for the 3D scene. */
 export function prepareScene(root: LayoutFolderNode): PreparedScene {
-  const centerX = root.rect.x + root.rect.width / 2
-  const centerZ = root.rect.y + root.rect.height / 2
+  const ctx: SceneContext = {
+    centerX: root.rect.x + root.rect.width / 2,
+    centerZ: root.rect.y + root.rect.height / 2,
+    districts: [],
+    buildings: [],
+  }
 
-  const plots = root.children.filter(
+  const plots: LayoutTreeNode[] = root.children.filter(
     (child) => child.rect.width > 0 && child.rect.height > 0,
   )
 
-  const districts: DistrictTile[] = []
-  const buildings: BuildingInstance[] = []
   const roadDashes: RoadDash[] = []
   const seenDashes = new Set<string>()
 
-  let districtIndex = 0
+  let paletteIndex = 0
   for (const plot of plots) {
     const width = plot.rect.width
     const depth = plot.rect.height
-    const x = plot.rect.x + width / 2 - centerX
-    const z = plot.rect.y + depth / 2 - centerZ
 
     plotRoadDashes(
-      plot.rect.x - centerX,
-      plot.rect.y - centerZ,
+      plot.rect.x - ctx.centerX,
+      plot.rect.y - ctx.centerZ,
       width,
       depth,
       seenDashes,
       roadDashes,
     )
 
-    const curbWidth = Math.max(width - roadGutter(width) * 2, 0.1)
-    const curbDepth = Math.max(depth - roadGutter(depth) * 2, 0.1)
-    const plazaWidth = Math.max(curbWidth - sidewalkWidth(curbWidth) * 2, 0.05)
-    const plazaDepth = Math.max(curbDepth - sidewalkWidth(curbDepth) * 2, 0.05)
-
-    const plotBuildings: BuildingInstance[] = []
-    collectBuildings(plot, centerX, centerZ, plotBuildings)
-
     if (plot.type === 'folder') {
-      districts.push({
-        name: plot.name,
-        path: plot.path,
-        x,
-        z,
-        width,
-        depth,
-        curbWidth,
-        curbDepth,
-        plazaWidth,
-        plazaDepth,
-        color: DISTRICT_PALETTE[districtIndex % DISTRICT_PALETTE.length],
-      })
-      districtIndex++
-      applyPlotTransform(
-        plotBuildings,
-        {
-          centerX: x,
-          centerZ: z,
-          scaleX: plazaWidth / width,
-          scaleZ: plazaDepth / depth,
-        },
-        buildings,
+      addCommunity(
+        plot,
+        0,
+        DISTRICT_PALETTE[paletteIndex % DISTRICT_PALETTE.length],
+        IDENTITY,
+        IDENTITY,
+        ctx,
       )
-    } else {
-      // A file sitting directly at the repo root gets no district tile, but it
-      // still has to keep clear of the roads around its own plot.
-      applyPlotTransform(
-        plotBuildings,
-        {
-          centerX: x,
-          centerZ: z,
-          scaleX: curbWidth / width,
-          scaleZ: curbDepth / depth,
-        },
-        buildings,
-      )
+      paletteIndex++
+      continue
     }
+
+    // A file sitting loose in the repo root belongs to no community, so it gets
+    // no boundary of its own — just enough of an inset to keep it off the road.
+    const x = plot.rect.x + width / 2 - ctx.centerX
+    const z = plot.rect.y + depth / 2 - ctx.centerZ
+    const curbWidth = Math.max(width - roadGutter(width) * 2, MIN_TILE)
+    const curbDepth = Math.max(depth - roadGutter(depth) * 2, MIN_TILE)
+    addBuilding(
+      plot,
+      shrinkAbout(IDENTITY, x, curbWidth / width),
+      shrinkAbout(IDENTITY, z, curbDepth / depth),
+      ctx,
+    )
   }
 
   const streetLamps: StreetProp[] = []
   const trees: StreetProp[] = []
   const benches: StreetProp[] = []
-  for (const district of districts) {
-    perimeterProps(district, streetLamps, trees, benches)
+  for (const district of ctx.districts) {
+    // Street furniture belongs on streets; the lanes inside a community are
+    // too narrow to line with lamp posts.
+    if (district.level === 0) {
+      perimeterProps(district, streetLamps, trees, benches)
+    }
   }
 
   return {
-    buildings,
-    districts,
+    buildings: ctx.buildings,
+    districts: ctx.districts,
     streetLamps,
     trees,
     benches,
